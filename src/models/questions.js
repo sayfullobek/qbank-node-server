@@ -40,7 +40,12 @@ const questionsSchema = new Schema(
 				required: true,
 			},
 		],
-		answer: {
+		answerEn: {
+			//togri varyanti
+			type: String,
+			required: true,
+		},
+		answerUz: {
 			//togri varyanti
 			type: String,
 			required: true,
