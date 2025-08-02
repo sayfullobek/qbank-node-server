@@ -14,6 +14,7 @@ exports.getAll = async (req, res) => {
         const result = await service.getAllSystems({ page, limit });
         res.json(result);
     } catch (err) {
+        console.log(err)
         res.status(500).json({ error: err.message });
     }
 };

@@ -1,4 +1,4 @@
-const { Subjects } = require("../models");
+const { Subjects, Questions } = require("../models");
 
 exports.createSubject = async (data) => {
     return await Subjects.create(data);
@@ -6,19 +6,41 @@ exports.createSubject = async (data) => {
 
 exports.getAllSubjects = async ({ page = 1, limit = 10 }) => {
     const skip = (page - 1) * limit;
-    const [items, total] = await Promise.all([
+
+    const [subjects, total] = await Promise.all([
         Subjects.find().skip(skip).limit(limit),
         Subjects.countDocuments(),
     ]);
 
+    const all = await Questions.find()
+
+    console.log(all)
+
+    // Har bir subjectga tegishli questionlarni olish
+    const subjectsWithQuestions = await Promise.all(
+        subjects.map(async (subject) => {
+            const questions = await Questions.find({
+                Subjects: { $in: [subject._id] } // subject key bo‘yicha filter
+            });
+
+            console.log(questions)
+
+            return {
+                ...subject.toObject(),
+                questions,
+            };
+        })
+    );
+
     return {
-        items,
+        items: subjectsWithQuestions,
         total,
         page: Number(page),
         limit: Number(limit),
         pages: Math.ceil(total / limit),
     };
 };
+
 
 exports.getSubjectById = async (id) => {
     return await Subjects.findById(id);

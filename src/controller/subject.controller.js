@@ -2,7 +2,6 @@ const service = require("../services/subject.service");
 
 exports.create = async (req, res) => {
     try {
-        console.log(req.body)
         const subject = await service.createSubject(req.body);
         res.status(201).json(subject);
     } catch (err) {

@@ -5,4 +5,5 @@ module.exports = {
     questionController: require("./questions.controller"),
     planController: require("./plan.controller"),
     authController: require("./auth.controller"),
+    resultController: require("./resultController"),
 }

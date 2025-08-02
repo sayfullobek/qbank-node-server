@@ -6,4 +6,6 @@ module.exports = {
 	Subjects: require('./subjects'),
 	Level: require('./level'),
 	Plan: require('./plan'),
+	Test: require("./test"),
+	OneTest: require("./oneTest"),
 }

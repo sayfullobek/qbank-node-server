@@ -5,6 +5,6 @@ const { verifyUsersToken } = require("../config");
 
 router.post("/register", authController.register);
 router.post("/login", authController.login);
-router.get("/me", verifyUsersToken, authController.getMe);
+router.get("/get-me/:id", verifyUsersToken, authController.getMe);
 
 module.exports = router;

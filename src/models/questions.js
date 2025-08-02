@@ -36,8 +36,16 @@ const questionsSchema = new Schema(
 		options: [
 			{
 				//varyantlar
-				type: String,
-				required: true,
+				// type: String,
+				// required: true,
+				uz: {
+					type: String,
+					required: true,
+				},
+				en: {
+					type: String,
+					required: true
+				}
 			},
 		],
 		answerEn: {

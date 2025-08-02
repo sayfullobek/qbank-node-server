@@ -1,4 +1,4 @@
-const { Systems } = require("../models");
+const { Systems, Questions } = require("../models");
 
 exports.createSystem = async (data) => {
     return await Systems.create(data);
@@ -6,13 +6,34 @@ exports.createSystem = async (data) => {
 
 exports.getAllSystems = async ({ page = 1, limit = 10 }) => {
     const skip = (page - 1) * limit;
-    const [items, total] = await Promise.all([
+
+    const [systems, total] = await Promise.all([
         Systems.find().skip(skip).limit(limit),
-        Systems.countDocuments(),
+        Systems.countDocuments()
     ]);
+    const que = await Questions.find()
+
+    console.log(que)
+
+
+    // Har bir systemga tegishli questionlarni olish
+    const systemsWithQuestions = await Promise.all(
+        systems.map(async (system) => {
+            const questions = await Questions.find({
+                Systems: { $in: [system._id] }
+            });
+
+
+            console.log(questions)
+            return {
+                ...system.toObject(),
+                questions
+            };
+        })
+    );
 
     return {
-        items,
+        items: systemsWithQuestions,
         total,
         page: Number(page),
         limit: Number(limit),

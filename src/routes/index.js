@@ -7,5 +7,7 @@ router.use('/subjects', require('./subjectRoute')); // 👉 qo‘shildi
 router.use('/level', require('./levelRoute')); // qo‘shilgan qism
 router.use('/plan', require('./planRoute')); // qo‘shilgan qism
 router.use('/questions', require('./questionRoute')); // qo‘shilgan qism
+router.use('/test', require('./testRoutes')); // qo‘shilgan qism
+router.use('/result', require('./resultRoutes')); // qo‘shilgan qism
 
 module.exports = router;
