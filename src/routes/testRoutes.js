@@ -13,6 +13,7 @@ router.get('/', verifyUsersToken, testController.getAllTests);
 
 // GET /api/tests/:id - get single test by id
 router.get('/:id', verifyUsersToken, testController.getTestById);
+router.get('/user-test/:id', verifyUsersToken, testController.getTestByIdUser);
 
 router.get('/check/:id/:questionId', verifyUsersToken, testController.checkIsActiveTest);
 

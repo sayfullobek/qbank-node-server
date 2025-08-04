@@ -7,11 +7,11 @@ exports.createResult = async (data) => {
 };
 
 exports.getAllResults = async () => {
-    return await Result.find().populate("users");
+    return await Result.find().populate("user");
 };
 
 exports.getResultById = async (id) => {
-    return await Result.findById(id).populate("users");
+    return await Result.findById(id).populate("user");
 };
 
 exports.updateResult = async (id, data) => {

@@ -6,6 +6,10 @@ const oneTestSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'questions',
         required: true
+    }, test: {
+        type: Schema.Types.ObjectId,
+        ref: "Test",
+        required: true
     }, isCorrect: {
         type: Boolean,
         required: true,

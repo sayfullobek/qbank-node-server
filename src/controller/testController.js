@@ -1,4 +1,4 @@
-const { Test, Questions, OneTest } = require('../models');
+const { Test, Questions, OneTest, Result } = require('../models');
 const testService = require('../services/testService');
 
 exports.createTest = async (req, res) => {
@@ -56,6 +56,7 @@ exports.createOneTestAndPushToTest = async (req, res) => {
         }
         const newOneTest = await OneTest.create({
             question: questionId,
+            test: testId,
             isCorrect: isCorrect,
             answer
         });
@@ -111,6 +112,41 @@ exports.getTestById = async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 };
+
+exports.getTestByIdUser = async (req, res) => {
+    try {
+        // 1. Foydalanuvchiga tegishli barcha testlarni topish
+        const tests = await Test.find({ user: req.params.id })
+            .populate("subjects")
+            .populate("sytems") // Ehtimol sizda typo: sytems -> systems?
+            .lean();
+
+        if (!tests || tests.length === 0) {
+            return res.status(404).json({ success: false, message: "Test topilmadi" });
+        }
+
+        // 2. Har bir test uchun resultlarni olish va testga biriktirish
+        const testsWithResults = await Promise.all(
+            tests.map(async (test) => {
+                const results = await Result.find({ test: test._id }).lean();
+                return { ...test, results };
+            })
+        );
+
+        console.log(testsWithResults)
+
+        res.status(200).json({
+            success: true,
+            data: testsWithResults
+        });
+
+    } catch (err) {
+        console.error("Xatolik:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+
 exports.checkIsActiveTest = async (req, res) => {
     try {
 

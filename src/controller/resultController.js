@@ -1,21 +1,46 @@
+const { Result, OneTest } = require("../models");
 const resultService = require("../services/resultService");
 
 exports.createResult = async (req, res) => {
     try {
-        const data = req.body
-        const payload = {
-            users: req.users,
-            test: data.test,
-            correct: data.correct,
-            error: data.error,
-            unanswered: data.unanswered,
-            score: data.score
-        };
-        const result = await resultService.createResult(payload);
-        res.status(201).json({ success: true, data: result });
-    } catch (err) {
-        console.log(err)
-        res.status(500).json({ success: false, message: err.message });
+        const { userId, testId, pausedTest } = req.body;
+
+        // 1. Testga tegishli barcha OneTestlarni olish
+        const oneTests = await OneTest.find({ test: testId });
+
+        // 2. To‘g‘ri javoblar soni (isCorrect = true)
+        const correct = oneTests.filter(item => item.isCorrect).length;
+
+        // 3. Noto‘g‘ri javoblar soni
+        const error = oneTests.length - correct;
+
+        // 4. Score hisoblash (foizda)
+        const score = oneTests.length === 0 ? 0 : Math.round((correct / oneTests.length) * 100);
+
+        // 5. Yangi natija yaratish
+        const result = new Result({
+            user: userId,
+            test: testId,
+            correct,
+            pausedTest,
+            error,
+            score
+        });
+
+        const savedResult = await result.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Test natijalari saqlandi",
+            result: savedResult
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: "Natijalarni saqlashda xatolik",
+            error: error.message
+        });
     }
 };
 
@@ -24,6 +49,7 @@ exports.getAllResults = async (req, res) => {
         const results = await resultService.getAllResults();
         res.status(200).json({ success: true, data: results });
     } catch (err) {
+        console.log(err)
         res.status(500).json({ success: false, message: err.message });
     }
 };

@@ -6,4 +6,7 @@ module.exports = {
     planController: require("./plan.controller"),
     authController: require("./auth.controller"),
     resultController: require("./resultController"),
+    noteController: require("./noteController"),
+    flashcardController: require("./flashcardController"),
+    dashboardController: require("./dashboardController")
 }

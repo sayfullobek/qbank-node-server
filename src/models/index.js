@@ -8,4 +8,6 @@ module.exports = {
 	Plan: require('./plan'),
 	Test: require("./test"),
 	OneTest: require("./oneTest"),
+	Notes: require("./notes"),
+	Flashcard: require("./flashCard"),
 }
