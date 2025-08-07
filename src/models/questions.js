@@ -58,6 +58,20 @@ const questionsSchema = new Schema(
 			type: String,
 			required: true,
 		},
+		photos: [{
+			filename: String,
+			path: String,
+			mimetype: String,
+			size: Number
+		}],
+		explainEn: {
+			type: String,
+			required: true,
+		},
+		explainUz: {
+			type: String,
+			required: true,
+		},
 		step: {
 			type: String,
 			enum: ['step1', 'step2', 'step3'],

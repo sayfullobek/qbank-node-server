@@ -117,8 +117,25 @@ exports.getTestByIdUser = async (req, res) => {
     try {
         // 1. Foydalanuvchiga tegishli barcha testlarni topish
         const tests = await Test.find({ user: req.params.id })
-            .populate("subjects")
-            .populate("sytems") // Ehtimol sizda typo: sytems -> systems?
+            .populate({
+                path: 'oneTests',
+                populate: {
+                    path: 'question',
+                    model: 'questions', // to‘g‘ri model nomi (ko‘plikda, `questions`)
+                    populate: [
+                        {
+                            path: 'Subjects',
+                            model: 'subjects'
+                        },
+                        {
+                            path: 'Systems',
+                            model: 'systems'
+                        }
+                    ]
+                }
+            })
+            .populate('subjects') // bu Test modelidagi field bo‘lsa
+            .populate('sytems') // agar to‘g‘ri nomlangan bo‘lsa
             .lean();
 
         if (!tests || tests.length === 0) {
@@ -132,8 +149,6 @@ exports.getTestByIdUser = async (req, res) => {
                 return { ...test, results };
             })
         );
-
-        console.log(testsWithResults)
 
         res.status(200).json({
             success: true,
