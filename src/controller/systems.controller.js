@@ -10,8 +10,9 @@ exports.create = async (req, res) => {
 };
 exports.getAll = async (req, res) => {
     try {
+        const userId = req.users._id
         const { page, limit } = req.query;
-        const result = await service.getAllSystems({ page, limit });
+        const result = await service.getAllSystems({ page, limit, userId});
         res.json(result);
     } catch (err) {
         console.log(err)

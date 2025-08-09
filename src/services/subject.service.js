@@ -14,16 +14,12 @@ exports.getAllSubjects = async ({ page = 1, limit = 10 }) => {
 
     const all = await Questions.find()
 
-    console.log(all)
-
     // Har bir subjectga tegishli questionlarni olish
     const subjectsWithQuestions = await Promise.all(
         subjects.map(async (subject) => {
             const questions = await Questions.find({
                 Subjects: { $in: [subject._id] } // subject key bo‘yicha filter
             });
-
-            console.log(questions)
 
             return {
                 ...subject.toObject(),

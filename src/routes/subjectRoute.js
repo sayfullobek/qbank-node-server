@@ -3,7 +3,7 @@ const { subjectController } = require("../controller");
 const { verifyUsersToken } = require("../config");
 const upload = require("../middlewares/upload");
 
-router.get("/", subjectController.getAll);
+router.get("/", verifyUsersToken, subjectController.getAll);
 router.get("/:id", subjectController.getOne);
 router.post("/", verifyUsersToken, upload.none(''), subjectController.create);
 router.put("/:id", verifyUsersToken, upload.none(''), subjectController.update);

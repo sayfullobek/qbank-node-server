@@ -175,8 +175,6 @@ exports.checkIsActiveTest = async (req, res) => {
             question: req.params.questionId
         });
 
-        console.log(isExist)
-
         res.status(200).json({
             success: true,
             data: {
