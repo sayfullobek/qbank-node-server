@@ -5,8 +5,11 @@ exports.createResult = async (req, res) => {
     try {
         const { userId, testId, pausedTest } = req.body;
 
+        // Eski natijani o‘chirish
+        await Result.deleteOne({ user: userId, test: testId });
+
         // 1. Testga tegishli barcha OneTestlarni olish
-        const oneTests = await OneTest.find({ test: testId });
+        const oneTests = await OneTest.find({ test: testId, user: userId });
 
         // 2. To‘g‘ri javoblar soni (isCorrect = true)
         const correct = oneTests.filter(item => item.isCorrect).length;
@@ -43,6 +46,7 @@ exports.createResult = async (req, res) => {
         });
     }
 };
+
 
 exports.getAllResults = async (req, res) => {
     try {

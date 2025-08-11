@@ -116,7 +116,7 @@ exports.getDashboardData = async (req, res) => {
         const rank = allUsers.findIndex(u => u._id.toString() === userId) + 1;
 
         // Process recent tests
-        const recentTests = recentResults.map(result => ({
+        const recentTests = recentResults?.map(result => ({
             id: result._id,
             name: result.test.testName,
             score: result.score,

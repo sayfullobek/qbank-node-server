@@ -1,4 +1,4 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const testSchema = new mongoose.Schema({
     user: {
@@ -46,7 +46,14 @@ const testSchema = new mongoose.Schema({
         type: Number,
         required: true,
         default: 60,
-    }
-})
+    },
 
-module.exports = mongoose.model("Test", testSchema)
+    // Oldingi pausedTest o'rniga status
+    status: {
+        type: String,
+        enum: ["in-progress", "paused", "finished"],
+        default: "in-progress"
+    }
+});
+
+module.exports = mongoose.model("Test", testSchema);

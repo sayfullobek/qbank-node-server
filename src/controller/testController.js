@@ -37,38 +37,76 @@ exports.createTest = async (req, res) => {
 
 exports.createOneTestAndPushToTest = async (req, res) => {
     try {
-        const { questionId, isCorrect, answer } = req.body;
-        const { testId } = req.params
-        // 2. Test hujjatini olish
-        const test = await Test.findById(testId).populate("oneTests");
+        const { questionId, isCorrect, answer, status, mark } = req.body;
+        const { testId } = req.params;
+        const userId = req.users;
 
+        // Test hujjatini olish
+        const test = await Test.findById(testId).populate("oneTests");
         if (!test) {
             return res.status(404).json({ message: "Test topilmadi" });
         }
 
-        const isExist = await OneTest.findOne({
+        // Avval mavjud bo'lganini tekshirish
+        let oneTest = await OneTest.findOne({
             _id: { $in: test.oneTests },
-            question: questionId
-        });
-
-        if (isExist) {
-            return res.status(400).json({ message: "Bu OneTest allaqachon testga qo‘shilgan" });
-        }
-        const newOneTest = await OneTest.create({
             question: questionId,
-            test: testId,
-            isCorrect: isCorrect,
-            answer
+            user: userId
         });
 
-        // 4. oneTests massiviga yangi OneTest `_id` ni qo‘shish
-        test.oneTests.push(newOneTest._id);
-        await test.save();
+        if (oneTest) {
+            // Mavjud bo‘lsa yangilash
+            oneTest.isCorrect = isCorrect;
+            oneTest.answer = answer;
+            oneTest.status = status;
+            await oneTest.save();
+        } else {
+            // Yangi OneTest yaratish
+            const newOneTest = await OneTest.create({
+                question: questionId,
+                user: userId,
+                test: testId,
+                isCorrect,
+                answer,
+                mark,
+                status
+            });
 
-        res.status(201).json({
+            test.oneTests.push(newOneTest._id);
+            await test.save();
+        }
+
+        /**
+         * Agar status 'finished' bo'lsa -> ishlanmagan savollarga skip beramiz
+         */
+        if (status === "finished") {
+            // Testdagi barcha savollar ID-lari
+            const allQuestionIds = test.randomTest || []; // randomTest massivida savollar bo'lsa
+            // Mavjud ishlangan savollar
+            const answeredQuestionIds = await OneTest.find({
+                test: testId,
+                user: userId
+            }).distinct("question");
+
+            // Ishlanmagan savollarni topish
+            console.log(allQuestionIds)
+            const skippedQuestions = allQuestionIds.filter(qId => !answeredQuestionIds.includes(qId.toString()));
+
+            // Har bir ishlanmagan savol uchun skip yozish
+            if (skippedQuestions.length > 0) {
+                const skipDocs = skippedQuestions.map(qId => ({
+                    question: qId,
+                    user: userId,
+                    test: testId,
+                    status: "skip"
+                }));
+                await OneTest.insertMany(skipDocs);
+            }
+        }
+
+        res.status(200).json({
             success: true,
-            message: "OneTest yaratildi va Testga muvaffaqiyatli qo‘shildi",
-            oneTest: newOneTest,
+            message: "OneTest yaratildi/yangilandi",
             updatedTest: test
         });
 
@@ -77,6 +115,8 @@ exports.createOneTestAndPushToTest = async (req, res) => {
         res.status(500).json({ message: "Server xatoligi", error });
     }
 };
+
+
 
 
 exports.getAllTests = async (req, res) => {
@@ -189,3 +229,40 @@ exports.checkIsActiveTest = async (req, res) => {
     }
 };
 
+exports.updateTestStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+        const id = req.params.id;
+        const userId = req.users;
+        console.log(status)
+        console.log(id)
+
+        await Test.findByIdAndUpdate(id, { status })
+
+        res.json({ success: true, message: "Test status yangilandi" });
+    } catch (error) {
+        console.error("Status update xatolik:", error);
+        res.status(500).json({ message: "Server xatoligi", error });
+    }
+};
+
+exports.updateMarkStatus = async (req, res) => {
+    try {
+        const { testId,  questionId} = req.params;
+        const { mark } = req.body;
+
+        const update = await OneTest.findOneAndUpdate({test: testId}, {mark: mark})
+
+        res.status(200).json({
+            success: true,
+            message: `Question ${mark ? 'marked' : 'unmarked'} successfully`,
+        });
+    } catch (error) {
+        console.error('Mark update error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};

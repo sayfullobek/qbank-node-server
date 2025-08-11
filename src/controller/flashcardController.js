@@ -82,16 +82,22 @@ exports.getFlashcardUser = async (req, res) => {
 exports.updateFlashcard = async (req, res) => {
     try {
         const body = req.body
+        console.log(req.files)
         const data = {
             user: body.user,
             front: body.front,
-            photo: req.files ? `${process.env.PHOTO_URL}/${req.files[0].filename}` : body.photo,
+            photo: req.files?.photo?.[0]
+                ? `${process.env.PHOTO_URL}/${req.files.photo[0].filename}`
+                : body.photo,
             back: body.back,
-            backPhoto: req.files ? `${process.env.PHOTO_URL}/${req.files[1].filename}` : body.backPhoto,
+            backPhoto: req.files?.backPhoto?.[0]
+                ? `${process.env.PHOTO_URL}/${req.files.backPhoto[0].filename}`
+                : body.backPhoto,
             subject: body.subject,
             system: body.system,
             subcategory: body.subcategory
-        }
+        };
+
         const flashcard = await flashcardService.updateFlashcard(req.params.id, data);
         res.status(200).json({
             success: true,
@@ -99,6 +105,7 @@ exports.updateFlashcard = async (req, res) => {
             data: flashcard
         });
     } catch (error) {
+        console.log(error)
         res.status(400).json({
             success: false,
             message: error.message

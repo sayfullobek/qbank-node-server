@@ -6,23 +6,33 @@ const oneTestSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'questions',
         required: true
+    }, user: {
+        type: Schema.Types.ObjectId,
+        ref: "users",
+        required: true,
     }, test: {
         type: Schema.Types.ObjectId,
         ref: "Test",
         required: true
     }, isCorrect: {
         type: Boolean,
-        required: true,
     }, answer: {
         uz: {
             type: String,
-            required: true,
+            // required: true,
         },
         en: {
             type: String,
-            required: true
+            // required: true
         }
     },
+    mark: {
+        type: Boolean,
+        default: false
+    },
+    status: {
+        type: String,
+    }
 }, schemaOptions);
 
 module.exports = model('OneTest', oneTestSchema);

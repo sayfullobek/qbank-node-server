@@ -17,4 +17,7 @@ router.get('/user-test/:id', verifyUsersToken, testController.getTestByIdUser);
 
 router.get('/check/:id/:questionId', verifyUsersToken, testController.checkIsActiveTest);
 
+router.put('/status/:id', verifyUsersToken, upload.none(), testController.updateTestStatus)
+router.put('/mark/:testId/:questionId', verifyUsersToken, upload.none(), testController.updateMarkStatus);
+
 module.exports = router;
