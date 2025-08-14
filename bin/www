@@ -5,7 +5,7 @@ const https = require('https')
 const fs = require('fs')
 const mongoose = require('mongoose')
 const dotenv = require('dotenv')
-const dataLoader = require('../src/components/dataLoader')
+const dataLoader = require('../src/component/dataLoader')
 dotenv.config()
 
 const port = normalizePort(process.env.PORT || '4040')
