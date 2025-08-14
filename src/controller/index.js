@@ -9,5 +9,6 @@ module.exports = {
     noteController: require("./noteController"),
     flashcardController: require("./flashcardController"),
     oneTestController: require("./oneTest.controller"),
-    dashboardController: require("./dashboardController")
+    dashboardController: require("./dashboardController"),
+    promoCodeController: require("./promoCodeController")
 }

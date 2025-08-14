@@ -32,7 +32,8 @@ const oneTestSchema = new Schema({
     },
     status: {
         type: String,
-    }
+    },
+    questionBank: { type: String }
 }, schemaOptions);
 
 module.exports = model('OneTest', oneTestSchema);

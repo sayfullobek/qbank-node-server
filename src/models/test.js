@@ -53,7 +53,11 @@ const testSchema = new mongoose.Schema({
         type: String,
         enum: ["in-progress", "paused", "finished"],
         default: "in-progress"
-    }
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
 });
 
 module.exports = mongoose.model("Test", testSchema);

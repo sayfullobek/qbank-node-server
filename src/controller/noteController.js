@@ -42,7 +42,7 @@ const updateNote = async (req, res) => {
     try {
         const updated = await noteService.updateNote(req.params.id, req.body);
         if (!updated) return res.status(404).json({ message: "Note not found" });
-        res.json(updated);
+        res.status(200).json({updated, success: true});
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -52,7 +52,7 @@ const deleteNote = async (req, res) => {
     try {
         const deleted = await noteService.deleteNote(req.params.id);
         if (!deleted) return res.status(404).json({ message: "Note not found" });
-        res.json({ message: "Note deleted" });
+        res.status(200).json({ message: "Note deleted", success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

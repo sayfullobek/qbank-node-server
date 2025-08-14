@@ -15,7 +15,7 @@ router.get("/:id", noteController.getNoteById);
 router.get("/user/:id", noteController.getNoteByIdUser);
 
 // PUT /api/notes/:id
-router.put("/:id", noteController.updateNote);
+router.put("/:id", verifyUsersToken, upload.none(), noteController.updateNote);
 
 // DELETE /api/notes/:id
 router.delete("/:id", noteController.deleteNote);

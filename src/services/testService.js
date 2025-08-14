@@ -6,7 +6,7 @@ exports.createTest = async (data) => {
 };
 
 exports.getAllTests = async (userId) => {
-    return await Test.find({ user: userId })
+    return await Test.find({ user: userId }).sort({_id: -1})
         .populate('subjects')
         .populate('sytems'); // Note: typo in "sytems" in schema; consider fixing to "systems"
 };

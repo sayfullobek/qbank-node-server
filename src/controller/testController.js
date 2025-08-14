@@ -1,4 +1,4 @@
-const { Test, Questions, OneTest, Result } = require('../models');
+const { Test, Questions, OneTest, Result, UserQBankProgress } = require('../models');
 const testService = require('../services/testService');
 
 exports.createTest = async (req, res) => {
@@ -42,9 +42,21 @@ exports.createOneTestAndPushToTest = async (req, res) => {
         const userId = req.users;
 
         // Test hujjatini olish
-        const test = await Test.findById(testId).populate("oneTests");
+        const test = await Test.findById(testId)
+            .populate("oneTests")
+            .populate({
+                path: "randomTest", // randomTest ichidagi savollar
+                select: "questionBank", // questionBank fieldini olish
+            });
+
         if (!test) {
             return res.status(404).json({ message: "Test topilmadi" });
+        }
+
+        // Savol hujjatini olish (questionBank aniqlash uchun)
+        const question = await Questions.findById(questionId).select("questionBank");
+        if (!question) {
+            return res.status(404).json({ message: "Savol topilmadi" });
         }
 
         // Avval mavjud bo'lganini tekshirish
@@ -59,6 +71,7 @@ exports.createOneTestAndPushToTest = async (req, res) => {
             oneTest.isCorrect = isCorrect;
             oneTest.answer = answer;
             oneTest.status = status;
+            oneTest.questionBank = question.questionBank; // yangi maydon
             await oneTest.save();
         } else {
             // Yangi OneTest yaratish
@@ -66,6 +79,7 @@ exports.createOneTestAndPushToTest = async (req, res) => {
                 question: questionId,
                 user: userId,
                 test: testId,
+                questionBank: question.questionBank, // yangi maydon
                 isCorrect,
                 answer,
                 mark,
@@ -80,29 +94,52 @@ exports.createOneTestAndPushToTest = async (req, res) => {
          * Agar status 'finished' bo'lsa -> ishlanmagan savollarga skip beramiz
          */
         if (status === "finished") {
-            // Testdagi barcha savollar ID-lari
-            const allQuestionIds = test.randomTest || []; // randomTest massivida savollar bo'lsa
-            // Mavjud ishlangan savollar
+            const allQuestionIds = test.randomTest?.map(q => q._id.toString()) || [];
             const answeredQuestionIds = await OneTest.find({
                 test: testId,
                 user: userId
             }).distinct("question");
 
-            // Ishlanmagan savollarni topish
-            console.log(allQuestionIds)
-            const skippedQuestions = allQuestionIds.filter(qId => !answeredQuestionIds.includes(qId.toString()));
+            const skippedQuestions = allQuestionIds.filter(qId => !answeredQuestionIds.includes(qId));
 
-            // Har bir ishlanmagan savol uchun skip yozish
             if (skippedQuestions.length > 0) {
-                const skipDocs = skippedQuestions.map(qId => ({
-                    question: qId,
-                    user: userId,
-                    test: testId,
-                    status: "skip"
-                }));
+                const skipDocs = [];
+                for (let qId of skippedQuestions) {
+                    const q = test.randomTest.find(q => q._id.toString() === qId);
+                    skipDocs.push({
+                        question: qId,
+                        user: userId,
+                        test: testId,
+                        status: "skip",
+                        questionBank: q.questionBank // yangi maydon
+                    });
+                }
                 await OneTest.insertMany(skipDocs);
             }
         }
+
+        /**
+         * Progress yangilash
+         */
+        const qbId = question.questionBank;
+        const totalQuestionsInBank = await Questions.countDocuments({ questionBank: qbId });
+        const usedQuestions = await OneTest.distinct("question", {
+            user: userId,
+            questionBank: qbId
+        });
+
+        const usedPercentage = (usedQuestions.length / totalQuestionsInBank) * 100;
+
+        // await UserQBankProgress.findOneAndUpdate(
+        //     { user: userId, questionBank: qbId },
+        //     {
+        //         user: userId,
+        //         questionBank: qbId,
+        //         usedQuestions: usedQuestions.length,
+        //         usedPercentage
+        //     },
+        //     { upsert: true, new: true }
+        // );
 
         res.status(200).json({
             success: true,
@@ -115,6 +152,7 @@ exports.createOneTestAndPushToTest = async (req, res) => {
         res.status(500).json({ message: "Server xatoligi", error });
     }
 };
+
 
 
 
@@ -248,10 +286,10 @@ exports.updateTestStatus = async (req, res) => {
 
 exports.updateMarkStatus = async (req, res) => {
     try {
-        const { testId,  questionId} = req.params;
+        const { testId, questionId } = req.params;
         const { mark } = req.body;
 
-        const update = await OneTest.findOneAndUpdate({test: testId}, {mark: mark})
+        const update = await OneTest.findOneAndUpdate({ test: testId }, { mark: mark })
 
         res.status(200).json({
             success: true,

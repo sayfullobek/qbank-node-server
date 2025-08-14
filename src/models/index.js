@@ -10,4 +10,6 @@ module.exports = {
 	OneTest: require("./oneTest"),
 	Notes: require("./notes"),
 	Flashcard: require("./flashCard"),
+	PromoCode: require("./promoCode"),
+	UserQBankProgress: require("./userQBankProgress")
 }

@@ -1,4 +1,4 @@
-const { Subjects } = require('../models')
+const { Subjects, Systems, Questions } = require('../models')
 const questionService = require('../services/questions.service')
 
 exports.create = async (req, res) => {
@@ -74,6 +74,70 @@ exports.create = async (req, res) => {
 		res.status(500).json({ error: "Server error" });
 	}
 };
+
+
+exports.createManyQuestion = async (req, res) => {
+	try {
+		let questions = req.body;
+
+		// Agar indeksli obyekt bo'lsa, massivga aylantiramiz
+		if (!Array.isArray(questions)) {
+			questions = Object.values(questions);
+		}
+
+		if (!Array.isArray(questions) || questions.length === 0) {
+			return res.status(400).json({ message: 'Savollar massivi yuborilishi kerak' });
+		}
+
+		const savedQuestions = [];
+
+		for (const q of questions) {
+			// 🔍 Subject ID larini olish
+			const subjectIds = [];
+			if (Array.isArray(q.Subjects)) {
+				for (const subjName of q.Subjects) {
+					console.log(subjName)
+					const subject = await Subjects.findOne({ nameEn: subjName.trim() });
+					if (!subject) {
+						throw new Error(`Subject topilmadi: ${subjName}`);
+					}
+					subjectIds.push(subject._id);
+				}
+			}
+
+			// 🔍 System ID larini olish
+			const systemIds = [];
+			if (Array.isArray(q.Systems)) {
+				for (const sysName of q.Systems) {
+					const system = await Systems.findOne({ nameEn: sysName.trim() });
+					if (!system) {
+						throw new Error(`System topilmadi: ${sysName}`);
+					}
+					systemIds.push(system._id);
+				}
+			}
+
+			// ❇️ Saqlash
+			const newQuestion = new Questions({
+				...q,
+				Subjects: subjectIds,
+				Systems: systemIds
+			});
+
+			const saved = await newQuestion.save();
+			savedQuestions.push(saved);
+		}
+
+		res.status(201).json({
+			message: `${savedQuestions.length} ta savol muvaffaqiyatli saqlandi`,
+			data: savedQuestions
+		});
+	} catch (error) {
+		console.error("createManyQuestion xatosi:", error);
+		res.status(500).json({ message: error.message || 'Savollarni saqlashda server xatosi' });
+	}
+};
+
 
 
 
@@ -179,3 +243,4 @@ exports.delete = async (req, res) => {
 		res.status(400).json({ error: err.message })
 	}
 }
+

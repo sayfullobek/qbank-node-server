@@ -26,6 +26,7 @@ const resultSchema = new mongoose.Schema({
     type: Number, 
     required: true 
   },
+  questionBank: { type: mongoose.Schema.Types.ObjectId, ref: 'QuestionBank' },
   createdAt: { 
     type: Date, 
     default: Date.now 

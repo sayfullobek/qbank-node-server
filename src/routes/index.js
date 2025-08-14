@@ -13,5 +13,6 @@ router.use('/notes', require('./noteRoutes')); // qo‘shilgan qism
 router.use('/flashcard', require('./flashcardRoutes')); // qo‘shilgan qism
 router.use('/dashboard', require('./dashboard')); // qo‘shilgan qism
 router.use('/one-test', require('./oneTestRoute')); // qo‘shilgan qism
+router.use('/promo-code', require('./promoCodeRoutes')); // qo‘shilgan qism
 
 module.exports = router;

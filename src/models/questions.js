@@ -3,14 +3,11 @@ const { schemaOptions } = require('./ModelOptions') // Noto‘g‘ri yo‘l to�
 
 const questionsSchema = new Schema(
 	{
-		nameEn: {
-			type: String,
-			required: true,
+		questionId: {
+			type: Number,
+			required: true
 		},
-		nameUz: {
-			type: String,
-			required: true,
-		},
+		
 		Subjects: [
 			{
 				type: Schema.Types.ObjectId,
@@ -18,6 +15,9 @@ const questionsSchema = new Schema(
 				required: true,
 			},
 		],
+		topic: {
+			type: String,
+		},
 		Systems: [
 			{
 				type: Schema.Types.ObjectId,
@@ -78,6 +78,7 @@ const questionsSchema = new Schema(
 			default: 'step1',
 			required: true,
 		},
+		questionBank: { type: String },
 		isActive: {
 			type: Boolean,
 			default: true,
