@@ -1,4 +1,4 @@
-const { Result, OneTest } = require("../models");
+const { Result, OneTest, Test } = require("../models");
 const resultService = require("../services/resultService");
 
 exports.createResult = async (req, res) => {
@@ -8,19 +8,31 @@ exports.createResult = async (req, res) => {
         // Eski natijani o‘chirish
         await Result.deleteOne({ user: userId, test: testId });
 
-        // 1. Testga tegishli barcha OneTestlarni olish
+        // Test hujjatini olish (umumiy savollar sonini olish uchun)
+        const testDoc = await Test.findById(testId);
+        if (!testDoc) {
+            return res.status(404).json({
+                success: false,
+                message: "Test topilmadi"
+            });
+        }
+
+        // 1. Userning ishlagan OneTestlarini olish
         const oneTests = await OneTest.find({ test: testId, user: userId });
 
-        // 2. To‘g‘ri javoblar soni (isCorrect = true)
+        // 2. To‘g‘ri javoblar soni
         const correct = oneTests.filter(item => item.isCorrect).length;
 
-        // 3. Noto‘g‘ri javoblar soni
+        // 3. Noto‘g‘ri javoblar soni (umumiydan emas, ishlanganlardan)
         const error = oneTests.length - correct;
 
-        // 4. Score hisoblash (foizda)
-        const score = oneTests.length === 0 ? 0 : Math.round((correct / oneTests.length) * 100);
+        // 4. Umumiy savollar soni testdan olinadi
+        const totalQuestions = testDoc.questionCount || oneTests.length;
 
-        // 5. Yangi natija yaratish
+        // 5. Score hisoblash (foiz)
+        const score = totalQuestions === 0 ? 0 : Math.round((correct / totalQuestions) * 100);
+
+        // 6. Yangi natija yaratish
         const result = new Result({
             user: userId,
             test: testId,
@@ -46,6 +58,7 @@ exports.createResult = async (req, res) => {
         });
     }
 };
+
 
 
 exports.getAllResults = async (req, res) => {
