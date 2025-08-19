@@ -139,3 +139,23 @@ exports.updatePhoto = async (req, res) => {
         })
     }
 }
+
+exports.updateDate = async (req, res) => {
+    try{
+        const id = req.params.id
+        const {testExpireAt} = req.body
+
+        await Users.findByIdAndUpdate(id, {testExpireAt})
+
+        res.status(200).json({
+            message: "Muafaqiyatli yangilanndi!",
+            success: true
+        })
+    }catch(err){
+        console.log(err)
+        res.status(500).json({
+            message: err.message,
+            success: false
+        })
+    }
+}

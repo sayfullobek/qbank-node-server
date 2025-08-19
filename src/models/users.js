@@ -42,7 +42,11 @@ const usersSchema = new Schema({
     }, createdAt: {
         type: Date,
         default: Date.now
-    }
+    },
+    testExpireAt: {
+        type: Date,
+        default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // ro‘yxatdan o‘tgan kundan 7 kun keyin
+    },
 }, schemaOptions);
 
 module.exports = model('users', usersSchema);

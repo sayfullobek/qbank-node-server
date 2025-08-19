@@ -8,11 +8,6 @@ const promoCodeSchema = new mongoose.Schema({
         uppercase: true, // Kiritilganda avtomatik katta harf bo‘ladi
         trim: true
     },
-    discountType: {
-        type: String,
-        enum: ['percent', 'amount'], // foiz yoki summa
-        required: true
-    },
     discountValue: {
         type: Number,
         required: true
@@ -39,13 +34,13 @@ const promoCodeSchema = new mongoose.Schema({
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User', // admin yoki moderator
+        ref: 'users', // admin yoki moderator
         required: true
     },
     usedBy: [
         {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User'
+            ref: 'users'
         }
     ]
 }, {

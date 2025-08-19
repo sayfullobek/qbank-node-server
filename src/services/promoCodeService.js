@@ -1,11 +1,15 @@
 const mongoose = require('mongoose');
-const { PromoCode } = require('../models');
+const { PromoCode, Users } = require('../models');
 
 /**
  * Promo kod yaratish
  */
 async function createPromoCode(data) {
     return await PromoCode.create(data);
+}
+
+async function updatePromoCode(id, data) {
+    return await PromoCode.findByIdAndUpdate(id, data);
 }
 
 /**
@@ -15,20 +19,23 @@ async function getAllPromoCodes() {
     return await PromoCode.find().populate('createdBy', 'fullName email');
 }
 
+async function getByIdPromoCodes(id) {
+    return await PromoCode.findById(id).populate('createdBy', 'fullName email');
+}
 /**
  * Promo kodni tekshirish va ishlatish
  */
 async function applyPromoCode(code, userId) {
-    const promo = await PromoCode.findOne({ code: code.toUpperCase(), isActive: true });
+    const promo = await PromoCode.findOne({
+        code: code.toUpperCase(),
+        isActive: true,
+        validUntil: { $gte: new Date() } // Faqat amal muddati tugamagan kodlar
+    });
 
-    if (!promo) throw new Error('Promo kod topilmadi yoki faol emas');
+    if (!promo) throw new Error('Promo kod topilmadi, faol emas yoki muddati tugagan');
 
-    const now = new Date();
-    if (now < promo.validFrom || now > promo.validUntil) {
-        throw new Error('Promo kod muddati tugagan yoki hali boshlanmagan');
-    }
-
-    if (promo.usedBy.includes(new mongoose.Types.ObjectId(userId))) {
+    // Foydalanuvchi allaqachon bu kodni ishlatganligini tekshirish
+    if (promo.usedBy.some(id => id.equals(userId))) {
         throw new Error('Siz bu promo koddan allaqachon foydalangansiz');
     }
 
@@ -36,20 +43,41 @@ async function applyPromoCode(code, userId) {
         throw new Error('Promo kod ishlatilish limiti tugagan');
     }
 
-    // Ishlatish
+    // Foydalanuvchini topish va yangilash
+    const user = await Users.findById(userId);
+    if (!user) throw new Error('Foydalanuvchi topilmadi');
+
+    // Yangi testExpireAt sanasini hisoblash
+    let newExpireDate = new Date();
+
+    // Agar avvaldan testExpireAt bo'lsa, undan boshlaymiz
+    if (user.testExpireAt && new Date(user.testExpireAt) > newExpireDate) {
+        newExpireDate = new Date(user.testExpireAt);
+    }
+
+    // Promo kodning discountValue miqdorida kun qo'shamiz
+    newExpireDate.setDate(newExpireDate.getDate() + promo.discountValue);
+
+    // Foydalanuvchini yangilash
+    user.testExpireAt = newExpireDate;
+    await user.save();
+
+    // Promo kodni yangilash (ishlatilganligini belgilash)
     promo.usedBy.push(userId);
     promo.usedCount += 1;
     await promo.save();
 
     return {
-        discountType: promo.discountType,
         discountValue: promo.discountValue,
-        message: 'Promo kod muvaffaqiyatli qo‘llandi'
+        newExpireDate: newExpireDate,
+        message: `Promo kod muvaffaqiyatli qo'llandi! ${promo.discountValue} kun qo'shildi. Yangi test muddati: ${newExpireDate.toLocaleDateString()}`
     };
 }
 
 module.exports = {
     createPromoCode,
     getAllPromoCodes,
-    applyPromoCode
+    applyPromoCode,
+    updatePromoCode,
+    getByIdPromoCodes
 };

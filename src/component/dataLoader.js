@@ -29,6 +29,7 @@ exports.createADMIN = async () => {
             password: encryptedPassword,
             country,
             role: "admin",
+            testExpireAt: "9999-08-18T23:06:56.661+00:00",
         });
 
         await admin.save();
