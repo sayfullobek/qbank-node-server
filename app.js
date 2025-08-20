@@ -27,8 +27,12 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Routes
 const indexRouter = require('./src/routes/index');
+const calendarRouter = require('./src/routes/calendar');
+
 app.use('/api/v1', indexRouter);
+app.use('/api/v1/calendar', calendarRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

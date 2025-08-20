@@ -47,12 +47,44 @@ const testSchema = new mongoose.Schema({
         required: true,
         default: 60,
     },
-
     // Oldingi pausedTest o'rniga status
     status: {
         type: String,
-        enum: ["in-progress", "paused", "finished"],
+        enum: ["in-progress", "paused", "finished", "suspended"],
         default: "in-progress"
+    },
+    // Statistika uchun yangi maydonlar
+    score: {
+        type: Number,
+        default: 0
+    },
+    maxScore: {
+        type: Number,
+        default: 0
+    },
+    duration: {
+        type: String,
+        default: function() {
+            return `${this.minutes} daqiqa`;
+        }
+    },
+    completedAt: {
+        type: Date,
+        default: null
+    },
+    // Test natijalarini saqlash uchun
+    results: {
+        correctAnswers: { type: Number, default: 0 },
+        incorrectAnswers: { type: Number, default: 0 },
+        omittedAnswers: { type: Number, default: 0 },
+        totalQuestions: { type: Number, default: 0 },
+        timeSpent: { type: Number, default: 0 }, // sekundlarda
+        answerChanges: [{
+            questionId: String,
+            from: String,
+            to: String,
+            timestamp: { type: Date, default: Date.now }
+        }]
     },
     createdAt: {
         type: Date,

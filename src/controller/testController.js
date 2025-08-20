@@ -1,4 +1,4 @@
-const { Test, Questions, OneTest, Result, UserQBankProgress } = require('../models');
+const { Test, Questions, OneTest, Result, UserQBankProgress, Users } = require('../models');
 const testService = require('../services/testService');
 
 exports.createTest = async (req, res) => {
@@ -11,29 +11,39 @@ exports.createTest = async (req, res) => {
             isActive: true
         }).lean();
 
-        // Random 10 ta tanlash
+        // Random savollar tanlash
         const randomQuestions = allQuestions
             .sort(() => Math.random() - 0.5)
             .slice(0, req.body.questionCount);
 
         const randomQuestionIds = randomQuestions.map(q => q._id);
 
-        // Agar keyin test yaratilsa, shuni saqlang
+        // Test yaratish
         const data = {
-            user: req.users.id, // auth middleware orqali keladi
+            user: req.users.id,
             randomTest: randomQuestionIds,
             ...req.body
         };
 
         const createdTest = await testService.createTest(data);
-        // console.log(createdTest)
-        res.status(201).json({ success: true, data: createdTest, firstTest: randomQuestionIds[0] });
+        
+        // User statistics da testsCreated ni yangilash
+        await Users.findByIdAndUpdate(req.users.id, {
+            $inc: { 'statistics.testsCreated': 1 }
+        });
+
+        res.status(201).json({ 
+            success: true, 
+            data: createdTest, 
+            firstTest: randomQuestionIds[0] 
+        });
     } catch (err) {
-        console.log(err)
+        console.log(err);
         res.status(500).json({ success: false, message: err.message });
     }
 };
 
+// testController.js da createOneTestAndPushToTest funksiyasini yangilang:
 
 exports.createOneTestAndPushToTest = async (req, res) => {
     try {
@@ -41,20 +51,22 @@ exports.createOneTestAndPushToTest = async (req, res) => {
         const { testId } = req.params;
         const userId = req.users;
 
+        console.log('Answer received:', { questionId, isCorrect, answer, status });
+
         // Test hujjatini olish
         const test = await Test.findById(testId)
             .populate("oneTests")
             .populate({
-                path: "randomTest", // randomTest ichidagi savollar
-                select: "questionBank", // questionBank fieldini olish
+                path: "randomTest",
+                select: "questionBank",
             });
 
         if (!test) {
             return res.status(404).json({ message: "Test topilmadi" });
         }
 
-        // Savol hujjatini olish (questionBank aniqlash uchun)
-        const question = await Questions.findById(questionId).select("questionBank");
+        // Savol hujjatini olish
+        const question = await Questions.findById(questionId).select("questionBank answerUz answerEn");
         if (!question) {
             return res.status(404).json({ message: "Savol topilmadi" });
         }
@@ -67,11 +79,31 @@ exports.createOneTestAndPushToTest = async (req, res) => {
         });
 
         if (oneTest) {
-            // Mavjud bo‘lsa yangilash
+            // Answer change tracking
+            if (oneTest.answer && (oneTest.answer.uz !== answer.uz || oneTest.answer.en !== answer.en)) {
+                const oldAnswer = oneTest.answer.uz || oneTest.answer.en;
+                const newAnswer = answer.uz || answer.en;
+                const correctAnswer = question.answerUz || question.answerEn;
+                
+                console.log('Answer change detected:', {
+                    oldAnswer,
+                    newAnswer,
+                    correctAnswer
+                });
+                
+                oneTest.answerChanges.push({
+                    from: oldAnswer,
+                    to: newAnswer,
+                    timestamp: new Date()
+                });
+            }
+            
+            // Mavjud bo'lsa yangilash
             oneTest.isCorrect = isCorrect;
             oneTest.answer = answer;
             oneTest.status = status;
-            oneTest.questionBank = question.questionBank; // yangi maydon
+            oneTest.questionBank = question.questionBank;
+            oneTest.finalAnswer = answer;
             await oneTest.save();
         } else {
             // Yangi OneTest yaratish
@@ -79,83 +111,170 @@ exports.createOneTestAndPushToTest = async (req, res) => {
                 question: questionId,
                 user: userId,
                 test: testId,
-                questionBank: question.questionBank, // yangi maydon
+                questionBank: question.questionBank,
                 isCorrect,
                 answer,
                 mark,
-                status
+                status,
+                originalAnswer: answer,
+                finalAnswer: answer
             });
 
             test.oneTests.push(newOneTest._id);
             await test.save();
         }
 
-        /**
-         * Agar status 'finished' bo'lsa -> ishlanmagan savollarga skip beramiz
-         */
+        // Agar status 'finished' bo'lsa
         if (status === "finished") {
-            const allQuestionIds = test.randomTest?.map(q => q._id.toString()) || [];
+            const allQuestionIds = test.randomTest?.map(q => q._id?.toString() || q.toString()) || [];
             const answeredQuestionIds = await OneTest.find({
                 test: testId,
                 user: userId
             }).distinct("question");
 
-            const skippedQuestions = allQuestionIds.filter(qId => !answeredQuestionIds.includes(qId));
+            const answeredQuestionIdsStr = answeredQuestionIds.map(id => id.toString());
+            const skippedQuestions = allQuestionIds.filter(qId => 
+                !answeredQuestionIdsStr.includes(qId.toString())
+            );
 
             if (skippedQuestions.length > 0) {
                 const skipDocs = [];
                 for (let qId of skippedQuestions) {
-                    const q = test.randomTest.find(q => q._id.toString() === qId);
                     skipDocs.push({
                         question: qId,
                         user: userId,
                         test: testId,
                         status: "skip",
-                        questionBank: q.questionBank // yangi maydon
+                        questionBank: question.questionBank,
+                        isCorrect: null
                     });
                 }
                 await OneTest.insertMany(skipDocs);
             }
+
+            // Test yakunlanganda statistikalarni yangilash
+            await updateTestStatistics(testId, userId);
         }
-
-        /**
-         * Progress yangilash
-         */
-        const qbId = question.questionBank;
-        const totalQuestionsInBank = await Questions.countDocuments({ questionBank: qbId });
-        const usedQuestions = await OneTest.distinct("question", {
-            user: userId,
-            questionBank: qbId
-        });
-
-        const usedPercentage = (usedQuestions.length / totalQuestionsInBank) * 100;
-
-        // await UserQBankProgress.findOneAndUpdate(
-        //     { user: userId, questionBank: qbId },
-        //     {
-        //         user: userId,
-        //         questionBank: qbId,
-        //         usedQuestions: usedQuestions.length,
-        //         usedPercentage
-        //     },
-        //     { upsert: true, new: true }
-        // );
 
         res.status(200).json({
             success: true,
-            message: "OneTest yaratildi/yangilandi",
             updatedTest: test
         });
 
     } catch (error) {
         console.error("Xatolik:", error);
-        res.status(500).json({ message: "Server xatoligi", error });
+        res.status(500).json({ error: error.message });
     }
 };
 
+// Test statistikalarini yangilash funksiyasi
+async function updateTestStatistics(testId, userId) {
+    try {
+        const test = await Test.findById(testId);
+        const oneTests = await OneTest.find({ test: testId, user: userId });
+        
+        let correctAnswers = 0;
+        let incorrectAnswers = 0;
+        let omittedAnswers = 0;
+        let totalAnswerChanges = 0;
+        
+        oneTests.forEach(oneTest => {
+            if (oneTest.isCorrect === true) {
+                correctAnswers++;
+            } else if (oneTest.isCorrect === false) {
+                incorrectAnswers++;
+            } else if (oneTest.status === 'skip' || oneTest.isCorrect === null) {
+                omittedAnswers++;
+            }
+            
+            // Answer changes count
+            if (oneTest.answerChanges && oneTest.answerChanges.length > 0) {
+                totalAnswerChanges += oneTest.answerChanges.length;
+            }
+        });
+        
+        const totalQuestions = oneTests.length;
+        const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+        
+        // Test modelini yangilash
+        await Test.findByIdAndUpdate(testId, {
+            status: 'finished',
+            completedAt: new Date(),
+            score: score,
+            maxScore: 100,
+            'results.correctAnswers': correctAnswers,
+            'results.incorrectAnswers': incorrectAnswers,
+            'results.omittedAnswers': omittedAnswers,
+            'results.totalQuestions': totalQuestions,
+            'results.answerChanges': oneTests.filter(ot => ot.answerChanges && ot.answerChanges.length > 0)
+                .map(ot => ot.answerChanges).flat()
+        });
+        
+        // User statistikalarini yangilash
+        const user = await Users.findById(userId);
+        if (user) {
+            user.statistics.totalCorrect += correctAnswers;
+            user.statistics.totalIncorrect += incorrectAnswers;
+            user.statistics.totalOmitted += omittedAnswers;
+            user.statistics.usedQuestions += totalQuestions;
+            user.statistics.testsCompleted += 1;
+            user.statistics.totalScore += score;
+            user.statistics.lastTestDate = new Date();
+            
+            // Average score yangilash
+            if (user.statistics.testsCompleted > 0) {
+                user.statistics.averageScore = Math.round(
+                    user.statistics.totalScore / user.statistics.testsCompleted
+                );
+            }
+            
+            // Streak yangilash
+            user.statistics.currentStreak = await calculateUserStreak(userId);
+            
+            await user.save();
+        }
+        
+        console.log(`Test ${testId} statistikalari yangilandi`);
+        
+    } catch (error) {
+        console.error('Test statistikalarini yangilashda xato:', error);
+    }
+}
 
+// User streak hisoblash
+async function calculateUserStreak(userId) {
+    try {
+        const last7Days = await Test.find({
+            user: userId,
+            status: 'finished',
+            completedAt: {
+                $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            }
+        }).sort({ completedAt: -1 });
 
+        const completedDates = last7Days.map(test => 
+            test.completedAt.toISOString().split('T')[0]
+        );
 
+        let streak = 0;
+        for (let i = 0; i < 7; i++) {
+            const checkDate = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+                .toISOString()
+                .split('T')[0];
+
+            if (completedDates.includes(checkDate)) {
+                streak++;
+            } else {
+                break;
+            }
+        }
+
+        return streak;
+    } catch (error) {
+        console.error('Streak hisoblashda xato:', error);
+        return 0;
+    }
+}
 
 exports.getAllTests = async (req, res) => {
     try {
@@ -181,7 +300,6 @@ exports.getTestById = async (req, res) => {
             success: true,
             data: {
                 test,
-                // questions: processedQuestions
             }
         });
 
@@ -193,13 +311,12 @@ exports.getTestById = async (req, res) => {
 
 exports.getTestByIdUser = async (req, res) => {
     try {
-        // 1. Foydalanuvchiga tegishli barcha testlarni topish
         const tests = await Test.find({ user: req.params.id })
             .populate({
                 path: 'oneTests',
                 populate: {
                     path: 'question',
-                    model: 'questions', // to‘g‘ri model nomi (ko‘plikda, `questions`)
+                    model: 'questions',
                     populate: [
                         {
                             path: 'Subjects',
@@ -212,15 +329,14 @@ exports.getTestByIdUser = async (req, res) => {
                     ]
                 }
             })
-            .populate('subjects') // bu Test modelidagi field bo‘lsa
-            .populate('sytems') // agar to‘g‘ri nomlangan bo‘lsa
+            .populate('subjects')
+            .populate('sytems')
             .lean();
 
         if (!tests || tests.length === 0) {
             return res.status(404).json({ success: false, message: "Test topilmadi" });
         }
 
-        // 2. Har bir test uchun resultlarni olish va testga biriktirish
         const testsWithResults = await Promise.all(
             tests.map(async (test) => {
                 const results = await Result.find({ test: test._id }).lean();
@@ -239,10 +355,8 @@ exports.getTestByIdUser = async (req, res) => {
     }
 };
 
-
 exports.checkIsActiveTest = async (req, res) => {
     try {
-
         const test = await Test.findById(req.params.id)
             .populate("subjects")
             .populate("sytems")
@@ -257,7 +371,6 @@ exports.checkIsActiveTest = async (req, res) => {
             success: true,
             data: {
                 isExist,
-                // questions: processedQuestions
             }
         });
 
@@ -272,15 +385,20 @@ exports.updateTestStatus = async (req, res) => {
         const { status } = req.body;
         const id = req.params.id;
         const userId = req.users;
-        console.log(status)
-        console.log(id)
 
-        await Test.findByIdAndUpdate(id, { status })
+        await Test.findByIdAndUpdate(id, { status });
 
-        res.json({ success: true, message: "Test status yangilandi" });
+        // Agar test suspended bo'lsa, user statistics da suspendedTests ni yangilash
+        if (status === 'suspended') {
+            await Users.findByIdAndUpdate(userId, {
+                $inc: { 'statistics.suspendedTests': 1 }
+            });
+        }
+
+        res.json({ success: true });
     } catch (error) {
         console.error("Status update xatolik:", error);
-        res.status(500).json({ message: "Server xatoligi", error });
+        res.status(500).json({ error: error.message });
     }
 };
 
@@ -289,17 +407,20 @@ exports.updateMarkStatus = async (req, res) => {
         const { testId, questionId } = req.params;
         const { mark } = req.body;
 
-        const update = await OneTest.findOneAndUpdate({ test: testId }, { mark: mark })
+        const update = await OneTest.findOneAndUpdate(
+            { test: testId, question: questionId }, 
+            { mark: mark },
+            { new: true }
+        );
 
         res.status(200).json({
             success: true,
-            message: `Question ${mark ? 'marked' : 'unmarked'} successfully`,
+            data: update
         });
     } catch (error) {
         console.error('Mark update error:', error);
         res.status(500).json({
             success: false,
-            message: 'Internal server error',
             error: error.message
         });
     }

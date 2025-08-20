@@ -1,29 +1,31 @@
 const { Schema, model } = require("mongoose");
-const { schemaOptions } = require("./ModelOptions"); // Noto‘g‘ri yo‘l to‘g‘irlandi
+const { schemaOptions } = require("./ModelOptions");
 
 const oneTestSchema = new Schema({
     question: {
         type: Schema.Types.ObjectId,
         ref: 'questions',
         required: true
-    }, user: {
+    }, 
+    user: {
         type: Schema.Types.ObjectId,
         ref: "users",
         required: true,
-    }, test: {
+    }, 
+    test: {
         type: Schema.Types.ObjectId,
         ref: "Test",
         required: true
-    }, isCorrect: {
+    }, 
+    isCorrect: {
         type: Boolean,
-    }, answer: {
+    }, 
+    answer: {
         uz: {
             type: String,
-            // required: true,
         },
         en: {
             type: String,
-            // required: true
         }
     },
     mark: {
@@ -33,7 +35,28 @@ const oneTestSchema = new Schema({
     status: {
         type: String,
     },
-    questionBank: { type: String }
+    questionBank: { 
+        type: String 
+    },
+    // Statistika uchun yangi maydonlar
+    timeSpent: {
+        type: Number, // sekundlarda
+        default: 0
+    },
+    answerChanges: [{
+        from: String,
+        to: String,
+        timestamp: { type: Date, default: Date.now }
+    }],
+    // Answer change tracking
+    originalAnswer: {
+        uz: String,
+        en: String
+    },
+    finalAnswer: {
+        uz: String,
+        en: String
+    }
 }, schemaOptions);
 
 module.exports = model('OneTest', oneTestSchema);
