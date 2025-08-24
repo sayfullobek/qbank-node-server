@@ -13,6 +13,9 @@ router.get("/", resultController.getAllResults);
 // GET: Bitta natijani olish
 router.get("/:id", resultController.getResultById);
 
+// GET: Test result data with full population (for Test Results page)
+router.get("/:id/full", resultController.getTestResultData);
+
 // PUT: Natijani yangilash
 router.put("/:id", resultController.updateResult);
 

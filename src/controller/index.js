@@ -7,6 +7,7 @@ module.exports = {
     authController: require("./auth.controller"),
     resultController: require("./resultController"),
     noteController: require("./noteController"),
+    highlightController: require("./highlightController"),
     flashcardController: require("./flashcardController"),
     oneTestController: require("./oneTest.controller"),
     dashboardController: require("./dashboardController"),

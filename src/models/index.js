@@ -9,6 +9,9 @@ module.exports = {
 	Test: require("./test"),
 	OneTest: require("./oneTest"),
 	Notes: require("./notes"),
+	Highlights: require("./highlights"),
+	Flags: require("./flags"),
+	MarkedQuestions: require("./markedQuestions"),
 	Flashcard: require("./flashCard"),
 	PromoCode: require("./promoCode"),
 	UserQBankProgress: require("./userQBankProgress")

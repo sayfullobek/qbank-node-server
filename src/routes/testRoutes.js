@@ -20,4 +20,7 @@ router.get('/check/:id/:questionId', verifyUsersToken, testController.checkIsAct
 router.put('/status/:id', verifyUsersToken, upload.none(), testController.updateTestStatus)
 router.put('/mark/:testId/:questionId', verifyUsersToken, upload.none(), testController.updateMarkStatus);
 
+// DELETE /api/tests/:id - delete test and reset OneTest records
+router.delete('/:id', verifyUsersToken, testController.deleteTest);
+
 module.exports = router;

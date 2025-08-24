@@ -73,11 +73,177 @@ exports.getAllResults = async (req, res) => {
 
 exports.getResultById = async (req, res) => {
     try {
-        const result = await resultService.getResultById(req.params.id);
-        if (!result) return res.status(404).json({ success: false, message: "Natija topilmadi" });
-        res.status(200).json({ success: true, data: result });
+        const result = await Result.findById(req.params.id)
+            .populate("user")
+            .populate({
+                path: "test",
+                populate: [
+                    {
+                        path: "subjects",
+                        model: "subjects",
+                        select: "name code"
+                    },
+                    {
+                        path: "sytems", 
+                        model: "systems",
+                        select: "name description"
+                    },
+                    {
+                        path: "oneTests",
+                        model: "OneTest",
+                        populate: {
+                            path: "question",
+                            model: "questions",
+                            populate: [
+                                {
+                                    path: "Subjects",
+                                    model: "subjects",
+                                    select: "name code"
+                                },
+                                {
+                                    path: "Systems",
+                                    model: "systems", 
+                                    select: "name description"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            });
+
+        if (!result) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Natija topilmadi" 
+            });
+        }
+
+        // Extract unique subjects and systems from OneTest questions
+        const uniqueSubjects = new Map();
+        const uniqueSystems = new Map();
+        
+        if (result.test?.oneTests) {
+            result.test.oneTests.forEach(oneTest => {
+                if (oneTest.question?.Subjects && oneTest.question.Subjects._id) {
+                    const subject = oneTest.question.Subjects;
+                    uniqueSubjects.set(subject._id.toString(), subject);
+                }
+                if (oneTest.question?.Systems && oneTest.question.Systems._id) {
+                    const system = oneTest.question.Systems;
+                    uniqueSystems.set(system._id.toString(), system);
+                }
+            });
+        }
+
+        // Prepare response data with extracted subjects and systems
+        const responseData = {
+            ...result.toObject(),
+            test: {
+                ...result.test.toObject(),
+                extractedSubjects: Array.from(uniqueSubjects.values()),
+                extractedSystems: Array.from(uniqueSystems.values())
+            }
+        };
+
+        res.status(200).json({ 
+            success: true, 
+            data: responseData 
+        });
+        
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error("getResultById error:", err);
+        res.status(500).json({ 
+            success: false, 
+            message: err.message 
+        });
+    }
+};
+
+exports.getTestResultData = async (req, res) => {
+    try {
+        const result = await Result.findById(req.params.id)
+            .populate("user")
+            .populate({
+                path: "test",
+                populate: [
+                    {
+                        path: "subjects",
+                        model: "subjects",
+                        select: "name code"
+                    },
+                    {
+                        path: "sytems", 
+                        model: "systems",
+                        select: "name description"
+                    },
+                    {
+                        path: "oneTests",
+                        model: "OneTest",
+                        populate: {
+                            path: "question",
+                            model: "questions",
+                            populate: [
+                                {
+                                    path: "Subjects",
+                                    model: "subjects",
+                                    select: "name code"
+                                },
+                                {
+                                    path: "Systems",
+                                    model: "systems", 
+                                    select: "name description"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            });
+
+        if (!result) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Natija topilmadi" 
+            });
+        }
+
+        // Extract unique subjects and systems from OneTest questions similar to getTestByIdUser
+        const uniqueSubjects = new Map();
+        const uniqueSystems = new Map();
+        
+        if (result.test?.oneTests) {
+            result.test.oneTests.forEach(oneTest => {
+                if (oneTest.question?.Subjects && oneTest.question.Subjects._id) {
+                    const subject = oneTest.question.Subjects;
+                    uniqueSubjects.set(subject._id.toString(), subject);
+                }
+                if (oneTest.question?.Systems && oneTest.question.Systems._id) {
+                    const system = oneTest.question.Systems;
+                    uniqueSystems.set(system._id.toString(), system);
+                }
+            });
+        }
+
+        // Prepare response data with extracted subjects and systems
+        const responseData = {
+            ...result.toObject(),
+            test: {
+                ...result.test.toObject(),
+                extractedSubjects: Array.from(uniqueSubjects.values()),
+                extractedSystems: Array.from(uniqueSystems.values())
+            }
+        };
+
+        res.status(200).json({ 
+            success: true, 
+            data: responseData 
+        });
+        
+    } catch (err) {
+        console.error("getTestResultData error:", err);
+        res.status(500).json({ 
+            success: false, 
+            message: err.message 
+        });
     }
 };
 

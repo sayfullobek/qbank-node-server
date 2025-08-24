@@ -72,6 +72,12 @@ const testSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
+    // Test rejimi
+    mode: {
+        type: String,
+        enum: ['tutor', 'timed'],
+        default: 'tutor'
+    },
     // Test natijalarini saqlash uchun
     results: {
         correctAnswers: { type: Number, default: 0 },

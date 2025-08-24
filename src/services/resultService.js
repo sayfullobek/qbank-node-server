@@ -11,7 +11,43 @@ exports.getAllResults = async () => {
 };
 
 exports.getResultById = async (id) => {
-    return await Result.findById(id).populate("user");
+    return await Result.findById(id)
+        .populate("user")
+        .populate({
+            path: "test",
+            populate: [
+                {
+                    path: "subjects",
+                    model: "subjects",
+                    select: "name code"
+                },
+                {
+                    path: "sytems",
+                    model: "systems", 
+                    select: "name description"
+                },
+                {
+                    path: "oneTests",
+                    model: "OneTest",
+                    populate: {
+                        path: "question",
+                        model: "questions",
+                        populate: [
+                            {
+                                path: "Subjects",
+                                model: "subjects",
+                                select: "name code"
+                            },
+                            {
+                                path: "Systems", 
+                                model: "systems",
+                                select: "name description"
+                            }
+                        ]
+                    }
+                }
+            ]
+        });
 };
 
 exports.updateResult = async (id, data) => {

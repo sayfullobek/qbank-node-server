@@ -13,3 +13,41 @@ module.exports.getAll = async (req, res) => {
         })
     }
 }
+
+// Get OneTest records by test ID for review
+module.exports.getByTestId = async (req, res) => {
+    try {
+        const testId = req.params.testId;
+        
+        const oneTests = await oneTest.find({ test: testId })
+            .populate({
+                path: 'question',
+                populate: [
+                    {
+                        path: 'Subjects',
+                        model: 'subjects',
+                        select: 'name code'
+                    },
+                    {
+                        path: 'Systems', 
+                        model: 'systems',
+                        select: 'name description'
+                    }
+                ]
+            })
+            .sort({ createdAt: 1 })
+            .lean();
+
+        res.status(200).json({
+            success: true,
+            data: oneTests
+        });
+        
+    } catch (err) {
+        console.error('OneTest getByTestId error:', err);
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+}

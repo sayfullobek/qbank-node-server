@@ -80,7 +80,7 @@ exports.createOneTestAndPushToTest = async (req, res) => {
 
         if (oneTest) {
             // Answer change tracking
-            if (oneTest.answer && (oneTest.answer.uz !== answer.uz || oneTest.answer.en !== answer.en)) {
+            if (oneTest.answer && answer && (oneTest.answer.uz !== answer.uz || oneTest.answer.en !== answer.en)) {
                 const oldAnswer = oneTest.answer.uz || oneTest.answer.en;
                 const newAnswer = answer.uz || answer.en;
                 const correctAnswer = question.answerUz || question.answerEn;
@@ -311,6 +311,7 @@ exports.getTestById = async (req, res) => {
 
 exports.getTestByIdUser = async (req, res) => {
     try {
+        console.log('🔍 getTestByIdUser called with userId:', req.params.id);
         const tests = await Test.find({ user: req.params.id })
             .populate({
                 path: 'oneTests',
@@ -320,27 +321,56 @@ exports.getTestByIdUser = async (req, res) => {
                     populate: [
                         {
                             path: 'Subjects',
-                            model: 'subjects'
+                            model: 'subjects',
+                            select: 'name code'
                         },
                         {
                             path: 'Systems',
-                            model: 'systems'
+                            model: 'systems',
+                            select: 'name description'
                         }
                     ]
                 }
             })
-            .populate('subjects')
-            .populate('sytems')
+            .populate('subjects', 'name code')
+            .populate('sytems', 'name description')
             .lean();
 
+        console.log('📊 Tests found:', tests ? tests.length : 0);
+        
         if (!tests || tests.length === 0) {
+            console.log('❌ No tests found for user');
             return res.status(404).json({ success: false, message: "Test topilmadi" });
         }
 
         const testsWithResults = await Promise.all(
             tests.map(async (test) => {
                 const results = await Result.find({ test: test._id }).lean();
-                return { ...test, results };
+                
+                // Extract unique subjects and systems from OneTest questions
+                const uniqueSubjects = new Map();
+                const uniqueSystems = new Map();
+                
+                if (test.oneTests) {
+                    test.oneTests.forEach(oneTest => {
+                        if (oneTest.question?.Subjects && oneTest.question.Subjects._id) {
+                            const subject = oneTest.question.Subjects;
+                            uniqueSubjects.set(subject._id.toString(), subject);
+                        }
+                        if (oneTest.question?.Systems && oneTest.question.Systems._id) {
+                            const system = oneTest.question.Systems;
+                            uniqueSystems.set(system._id.toString(), system);
+                        }
+                    });
+                }
+                
+                return { 
+                    ...test, 
+                    results,
+                    // Add extracted subjects and systems for frontend display
+                    extractedSubjects: Array.from(uniqueSubjects.values()),
+                    extractedSystems: Array.from(uniqueSystems.values())
+                };
             })
         );
 
@@ -421,6 +451,58 @@ exports.updateMarkStatus = async (req, res) => {
         console.error('Mark update error:', error);
         res.status(500).json({
             success: false,
+            error: error.message
+        });
+    }
+};
+
+// Delete test and reset OneTest records
+exports.deleteTest = async (req, res) => {
+    try {
+        const testId = req.params.id;
+        
+        // Find the test to get user info
+        const test = await Test.findById(testId);
+        if (!test) {
+            return res.status(404).json({
+                success: false,
+                message: 'Test topilmadi'
+            });
+        }
+
+        // Delete all OneTest records for this test (marks questions as unanswered)
+        await OneTest.deleteMany({ test: testId });
+        
+        // Delete the Result record for this test
+        await Result.deleteOne({ test: testId });
+        
+        // Delete the test itself
+        await Test.findByIdAndDelete(testId);
+        
+        // Update user statistics - decrement testsCompleted if test was completed
+        if (test.completedAt) {
+            await Users.findByIdAndUpdate(test.user, {
+                $inc: { 
+                    'statistics.testsCompleted': -1,
+                    'statistics.testsCreated': -1
+                }
+            });
+        } else {
+            await Users.findByIdAndUpdate(test.user, {
+                $inc: { 'statistics.testsCreated': -1 }
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Test va tegishli ma\'lumotlar muvaffaqiyatli o\'chirildi'
+        });
+        
+    } catch (error) {
+        console.error('Delete test error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Testni o\'chirishda xatolik yuz berdi',
             error: error.message
         });
     }
